@@ -5,7 +5,7 @@ import connectPgSimple from "connect-pg-simple";
 import { pool } from "./db";
 import { storage } from "./storage";
 
-export async function getSession() {
+export function getSession(app: Express) {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
 
   const PgSession = connectPgSimple(session);
@@ -15,6 +15,9 @@ export async function getSession() {
     createTableIfMissing: true,
   });
 
+  // Trust the Render proxy so secure cookies are sent
+  app.set('trust proxy', 1);
+
   return session({
     secret: process.env.SESSION_SECRET || "dev-secret",
     store: sessionStore,
@@ -22,14 +25,15 @@ export async function getSession() {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production", // Set to false for local dev without HTTPS
+      secure: process.env.NODE_ENV === "production", // requires trust proxy on Render
       maxAge: sessionTtl,
+      sameSite: 'lax', // Helps with cross-origin redirects if any
     },
   });
 }
 
 export async function setupAuth(app: Express) {
-  app.use(await getSession());
+  app.use(getSession(app));
   app.use(passport.initialize());
   app.use(passport.session());
 
