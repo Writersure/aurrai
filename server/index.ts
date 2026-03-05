@@ -36,6 +36,11 @@ app.use((req, res, next) => {
   next();
 });
 
+// Health check - responds even if DB/routes fail to initialize
+app.get("/health", (_req, res) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
 (async () => {
   try {
     const server = await registerRoutes(app);
